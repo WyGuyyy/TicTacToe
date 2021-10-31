@@ -1,0 +1,4 @@
+{
+    "omnisharp.enableImportCompletion": true,
+    "dotnet-test-explorer.testProjectPath": "**/*Test.csproj"
+}

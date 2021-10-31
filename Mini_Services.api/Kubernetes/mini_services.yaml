@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mini-services-deployment
+spec:
+  selector:
+    matchLabels:
+      app: mini-services
+  template:
+    metadata:
+      labels:
+        app: mini-services
+    spec:
+      containers:
+      - name: mini-services
+        image: mini_services:v2
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+        env:
+        - name: MongoDbSettings__Host
+          value: mongodb-service
+        - name: MongoDbSettings__Password
+          valueFrom:
+            secretKeyRef:
+              name: mini-services-secrets
+              key: mongodb-password
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 80
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mini-services-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: mini-services
+  ports:
+  - port: 80
+    targetPort: 80
+

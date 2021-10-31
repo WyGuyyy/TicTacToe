@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "GqhrnrAV4xiY7juxy91x4LJlOsOTPfDciL92OBtB2Uw3EqiGCWyqTvwJUfr2foICX/7i62BY8/ZqXVrJRJvciA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Wyatt\\Mini_Services\\build.proj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Wyatt\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.0\\microsoft.netframework.referenceassemblies.1.0.0.nupkg.sha512",
+    "C:\\Users\\Wyatt\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net45\\1.0.0\\microsoft.netframework.referenceassemblies.net45.1.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
