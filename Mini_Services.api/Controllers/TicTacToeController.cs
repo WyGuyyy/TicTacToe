@@ -15,6 +15,7 @@ using Mini_Services.api.Repositories;
 using Mini_Services.api.Dtos;
 using Mini_Services.api.Entities;
 using System.Runtime.CompilerServices;
+using System.Collections;
 
 namespace Mini_Services.Api.Controllers
 {
@@ -57,7 +58,7 @@ namespace Mini_Services.Api.Controllers
             }
 
             TicTacToe ticTacToe = new(){
-                sessionId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
                 board = determineInitialBoard(symbol, diff),
                 playerSymbol = Char.Parse(symbol),
                 difficulty = diff
@@ -68,6 +69,41 @@ namespace Mini_Services.Api.Controllers
             string info = buildSessionOpenMessage(ticTacToe);
 
             return info;
+        }
+
+        [HttpGet]
+        public async Task<IEnumerable<TicTacToe>> GetSessionsAsync(){
+
+            var sessions = await repository.GetSessionsAsync();
+
+            return sessions;
+
+        }
+
+        [HttpGet("{sessionId}")]
+        public async Task<ActionResult<TicTacToe>> GetSessionAsync(Guid sessionId){
+
+            var session = await repository.GetSessionAsync(sessionId);
+
+            if(session is null){
+                return NotFound();
+            }
+
+            return session;
+
+        }
+
+        [HttpDelete("{sessionId}")]
+        public async Task<ActionResult> DeleteSessionAsync(Guid sessionId){
+            var existingSession = await repository.GetSessionAsync(sessionId);
+
+            if(existingSession is null){
+                return NotFound();
+            }
+
+            await repository.DeleteSessionAsync(sessionId);
+
+            return NoContent();
         }
 
         [HttpPut]
@@ -96,7 +132,7 @@ namespace Mini_Services.Api.Controllers
             }
 
             TicTacToe updatedSession = new(){
-                sessionId = openSession.sessionId,
+                Id = openSession.Id,
                 board = playRound(openSession, row, column),
                 playerSymbol = openSession.playerSymbol,
                 difficulty = openSession.difficulty
@@ -106,7 +142,7 @@ namespace Mini_Services.Api.Controllers
 
             string info = buildSessionRoundMessage(updatedSession);
 
-            return info;
+            return "";//info;
         }
 
         public string buildSessionOpenMessage(TicTacToe ticTacToe){
@@ -114,7 +150,7 @@ namespace Mini_Services.Api.Controllers
             string strPlayerSymbol = (ticTacToe.playerSymbol == 'x' || ticTacToe.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
             string strCPUSymbol = (ticTacToe.playerSymbol == 'x' || ticTacToe.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
             string strDifficulty = (ticTacToe.difficulty == 1 ? "1 (Easy)" : (ticTacToe.difficulty == 2 ? "2 (Intermediate)" : "3 (Expert)"));
-            string sessionId = ticTacToe.sessionId.ToString();
+            string sessionId = ticTacToe.Id.ToString();
             char[][] currentBoard = ticTacToe.board;
 
             string board = $"   |   |   \n" +
@@ -137,6 +173,10 @@ namespace Mini_Services.Api.Controllers
                           "You can declare your next move by sending a PUT request with the JSON Object: {sessionId: <Session ID>, row: <Row #>, column: <Column #>}.".Replace("\n", Environment.NewLine);
 
             return message;
+
+        }
+
+        public string buildSessionRoundMessage(TicTacToe updatedSession){
 
         }
 
@@ -177,7 +217,7 @@ namespace Mini_Services.Api.Controllers
             currentBoard[row][column] = playerSymbol;
             numberOfPositionsFilled++;
 
-            if(checkWinner(currentBoard)){
+            if(checkWinner(currentBoard, row, column, playerSymbol)){
                 currentBoard[0][0] = 'P';
                 return currentBoard;
             }else if(numberOfPositionsFilled == 9){
@@ -189,7 +229,7 @@ namespace Mini_Services.Api.Controllers
             int[] cpuMoves = decideCPUMove(currentBoard, difficulty);
             currentBoard[cpuMoves[0]][cpuMoves[1]] = computerSymbol;
 
-            if(checkWinner(currentBoard)){
+            if(checkWinner(currentBoard, cpuMoves[0], cpuMoves[1], computerSymbol)){
                 currentBoard[0][0] = 'C';
                 return currentBoard;
             }else if(numberOfPositionsFilled == 9){
@@ -208,12 +248,49 @@ namespace Mini_Services.Api.Controllers
             return move;
         }
 
-        public bool checkWinner(char[][] board){
-            bool isWinner = false;
+        public bool checkWinner(char[][] board, int row, int column, char symbol){
 
-            //implement this next time
+            for(int count = 0; count < 3; count++){
+                if(board[row][count] != symbol){
+                    break;
+                }
+                if(count == 2){
+                    return true;
+                }
+            }
 
-            return isWinner;
+            for(int count = 0; count < 3; count++){
+                if(board[count][column] != symbol){
+                    break;
+                }
+                if(count == 2){
+                    return true;
+                }
+            }
+
+            if(row == column){
+                for(int count = 0; count < 3; count++){
+                    if(board[count][count] != symbol){
+                        break;
+                    }
+                    if(count == 2){
+                        return true;
+                    }
+                }
+            }
+
+            if(row + column == 2){
+                for(int count = 0; count < 3; count++){
+                    if(board[count][2 - count] != symbol){
+                        break;
+                    }
+                    if(count == 2){
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         public int countPositionsFilled(char[][] board){

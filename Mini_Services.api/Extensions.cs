@@ -23,7 +23,7 @@ namespace Mini_Services.Api
         {
             return new TicTacToeDto
             {
-                sessionId= ticTacToe.sessionId, 
+                Id= ticTacToe.Id, 
                 board = ticTacToe.board,
             };
             

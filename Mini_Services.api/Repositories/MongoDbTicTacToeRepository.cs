@@ -16,7 +16,6 @@ namespace Mini_Services.api.Repositories
         private const string databaseName = "mini_services";
         private const string collectionName = "tictactoe";
         private readonly FilterDefinitionBuilder<TicTacToe> filterBuilder = Builders<TicTacToe>.Filter;
-
         private readonly IMongoCollection<TicTacToe> ticTacToeCollection;
 
         public MongoDbTicTacToeRepository(IMongoClient mongoClient)
@@ -30,9 +29,15 @@ namespace Mini_Services.api.Repositories
             await ticTacToeCollection.InsertOneAsync(ticTacToe);
         }
 
+        public async Task DeleteSessionAsync(Guid sessionId)
+        {
+            var filter = filterBuilder.Eq(session => session.Id, sessionId);
+            await ticTacToeCollection.DeleteOneAsync(filter);
+        }
+
         public async Task<TicTacToe> GetSessionAsync(Guid sessionId)
         {
-            var filter = filterBuilder.Eq(session => session.sessionId, sessionId);
+            var filter = filterBuilder.Eq(session => session.Id, sessionId);
             return await ticTacToeCollection.Find(filter).SingleOrDefaultAsync();
         }
 
@@ -41,5 +46,10 @@ namespace Mini_Services.api.Repositories
             return await ticTacToeCollection.Find(new BsonDocument()).ToListAsync();
         }
 
+        public async Task UpdateSessionAsync(TicTacToe ticTacToe)
+        {
+            var filter = filterBuilder.Eq(existingSession => existingSession.Id, ticTacToe.Id);
+            await ticTacToeCollection.ReplaceOneAsync(filter, ticTacToe);
+        }
     }
 }

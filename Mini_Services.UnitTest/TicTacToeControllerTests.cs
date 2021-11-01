@@ -75,7 +75,7 @@ namespace Mini_Services.UnitTest
         {
             return new()
             {
-                sessionId = new Guid(),
+                Id = new Guid(),
                 board = new char[][]{new char[] {'x', 'x', 'x'}, new char[] {'o', 'o', 'o'}, new char[] {' ', ' ', ' '}},
                 playerSymbol = 'x',
                 difficulty = 1

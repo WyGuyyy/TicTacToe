@@ -13,6 +13,8 @@ namespace Mini_Services.api.Repositories
         Task CreateSessionAsync(TicTacToe ticTacToe);
         Task<TicTacToe> GetSessionAsync(Guid sessionId);
         Task<IEnumerable<TicTacToe>> GetSessionsAsync();
+        Task DeleteSessionAsync(Guid sessionId);
+        Task UpdateSessionAsync(TicTacToe ticTacToe);
 
     }
 }
