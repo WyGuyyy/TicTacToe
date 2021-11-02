@@ -138,11 +138,53 @@ namespace Mini_Services.Api.Controllers
                 difficulty = openSession.difficulty
             };
 
-            await repository.UpdateSessionAsync(updatedSession);
+            string info = "";
 
-            string info = buildSessionRoundMessage(updatedSession);
+            if(updatedSession.board[0][0] == 'P'){
+                await repository.DeleteSessionAsync(updatedSession.Id);
+                info = buildGameEndMessage(updatedSession, "Winner, winner, chicken dinner!!! You won!");
+            }else if(updatedSession.board[0][0] == 'C'){
+                await repository.DeleteSessionAsync(updatedSession.Id);
+                info = buildGameEndMessage(updatedSession, "Sorry, you lost. It looks like the AI got the best of you this time...");
+            }else if(updatedSession.board[0][0] == 'D'){
+                await repository.DeleteSessionAsync(updatedSession.Id);
+                info = buildGameEndMessage(updatedSession, "Its a draw! Whatta game!");
+            }else{
+                await repository.UpdateSessionAsync(updatedSession);
+                info = buildSessionRoundMessage(updatedSession);
+            }
 
-            return "";//info;
+            return info;
+        }
+
+        public string buildGameEndMessage(TicTacToe updatedSession, string resultMessage){
+
+            string strPlayerSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
+            string strCPUSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
+            string strDifficulty = (updatedSession.difficulty == 1 ? "1 (Easy)" : (updatedSession.difficulty == 2 ? "2 (Intermediate)" : "3 (Expert)"));
+            string sessionId = updatedSession.Id.ToString();
+            char[][] currentBoard = updatedSession.board;
+
+            string board = $"   |   |   \n" +
+                           $" {currentBoard[0][0]} | {currentBoard[0][1]} | {currentBoard[0][2]} \n" +
+                           $"_ _|_ _|_ _\n" +
+                           $"   |   |   \n" +
+                           $" {currentBoard[1][0]} | {currentBoard[1][1]} | {currentBoard[1][2]} \n" +
+                           $"_ _|_ _|_ _\n" +
+                           $"   |   |   \n" +
+                           $" {currentBoard[2][0]} | {currentBoard[2][1]} | {currentBoard[2][2]} \n" +
+                           $"   |   |   \n".Replace("\n", Environment.NewLine);
+
+            var message = $"{resultMessage}\n\n" + 
+                          $"Player Symbol: {strPlayerSymbol}\n" +
+                          $"CPU Symbol: {strCPUSymbol}\n" +
+                          $"Difficulty: {strDifficulty}\n" +
+                          $"Session ID: {sessionId}\n" +
+                          $"Final Board:\n\n" +
+                          $"{board}\n".Replace("\n", Environment.NewLine);
+
+            return message;
+
         }
 
         public string buildSessionOpenMessage(TicTacToe ticTacToe){
@@ -177,6 +219,32 @@ namespace Mini_Services.Api.Controllers
         }
 
         public string buildSessionRoundMessage(TicTacToe updatedSession){
+
+            string strPlayerSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
+            string strCPUSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
+            string strDifficulty = (updatedSession.difficulty == 1 ? "1 (Easy)" : (updatedSession.difficulty == 2 ? "2 (Intermediate)" : "3 (Expert)"));
+            string sessionId = updatedSession.Id.ToString();
+            char[][] currentBoard = updatedSession.board;
+
+            string board = $"   |   |   \n" +
+                           $" {currentBoard[0][0]} | {currentBoard[0][1]} | {currentBoard[0][2]} \n" +
+                           $"_ _|_ _|_ _\n" +
+                           $"   |   |   \n" +
+                           $" {currentBoard[1][0]} | {currentBoard[1][1]} | {currentBoard[1][2]} \n" +
+                           $"_ _|_ _|_ _\n" +
+                           $"   |   |   \n" +
+                           $" {currentBoard[2][0]} | {currentBoard[2][1]} | {currentBoard[2][2]} \n" +
+                           $"   |   |   \n".Replace("\n", Environment.NewLine);
+
+            var message = $"Nice move! Below is the current board at the end of the round:\n\n" + 
+                          $"Player Symbol: {strPlayerSymbol}\n" +
+                          $"CPU Symbol: {strCPUSymbol}\n" +
+                          $"Difficulty: {strDifficulty}\n" +
+                          $"Session ID: {sessionId}\n" +
+                          $"Current Board:\n\n" +
+                          $"{board}\n".Replace("\n", Environment.NewLine);
+
+            return message;
 
         }
 
@@ -226,7 +294,7 @@ namespace Mini_Services.Api.Controllers
             }
 
             //Computers turn
-            int[] cpuMoves = decideCPUMove(currentBoard, difficulty);
+            int[] cpuMoves = decideCPUMove(currentBoard, difficulty, computerSymbol);
             currentBoard[cpuMoves[0]][cpuMoves[1]] = computerSymbol;
 
             if(checkWinner(currentBoard, cpuMoves[0], cpuMoves[1], computerSymbol)){
@@ -242,10 +310,66 @@ namespace Mini_Services.Api.Controllers
         }
 
         //Brain of the computer player (CPU)
-        public int[] decideCPUMove(char[][] board, int difficulty){
+        public int[] decideCPUMove(char[][] board, int difficulty, char symbol){
             int[] move = new int[] {0, 0};
+            int bestScore = int.MinValue;
+
+            for(int row = 0; row < board.Length; row++){
+                for(int column = 0; column < board.Length; column++){
+                    if(board[row][column] == ' '){
+                        char[][] boardCopy = board;
+                        boardCopy[row][column] = symbol;
+                        int score = minimax(boardCopy, row, column, symbol, 0, true);
+                        if(score > bestScore){
+                            bestScore = score;
+                            move[0] = row;
+                            move[1] = column;
+                        }
+                    }
+                }
+            }
 
             return move;
+        }
+
+        public int minimax(char[][] board, int currRow, int currColumn, char symbol, int depth, bool isMaximizing){
+            bool result = this.checkWinner(board, currRow, currColumn, symbol);
+
+            if(result){
+                int boardSize = board.Length * board[0].Length;
+                return (isMaximizing ? boardSize - depth : (boardSize * -1) + depth);
+            }
+
+            symbol = (symbol == 'x' || symbol == 'X' ? 'O' : 'X');
+
+            if(isMaximizing){
+                int bestScore = int.MinValue;
+                for(int row = 0; row < board.Length; row++){
+                    for(int column = 0; column < board.Length; column++){
+                        if(board[row][column] == ' '){
+                            char[][] boardCopy = board;
+                            boardCopy[row][column] = symbol;
+                            int score = minimax(boardCopy, row, column, symbol, depth + 1, !isMaximizing);
+                            bestScore = Math.Max(score, bestScore);
+                        }
+                    }
+                }
+                return bestScore;
+            }else{
+                int bestScore = int.MaxValue;
+                for(int row = 0; row < board.Length; row++){
+                    for(int column = 0; column < board.Length; column++){
+                        if(board[row][column] == ' '){
+                            char[][] boardCopy = board;
+                            boardCopy[row][column] = symbol;
+                            int score = minimax(boardCopy, row, column, symbol, depth + 1, !isMaximizing);
+                            bestScore = Math.Min(score, bestScore);
+                        }
+                    }
+                }
+                return bestScore;
+            }
+
         }
 
         public bool checkWinner(char[][] board, int row, int column, char symbol){
