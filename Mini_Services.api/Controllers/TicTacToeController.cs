@@ -106,6 +106,21 @@ namespace Mini_Services.Api.Controllers
             return NoContent();
         }
 
+        [HttpGet]
+        [Route("help")]
+        public ActionResult<string> getHelp()
+        {
+            string message = "The following are endpoints that can be called:\n\n" +
+                             "(GET) /tictactoe/{sessionId} - Will return the details of a tic tac toe session identified by {sessionId}\n" +
+                             "(GET) /tictactoe - Will return a list of the details for all currently opened tic tac toe sessions\n" +
+                             "(GET) /tictactoe/help - Will return a list of the endpoints that can be called for tic tac toe\n" +
+                             "(POST) /tictactoe/{playerSymbol}/{difficulty} - Will create a new tic tac toe session and return the details of the newly created session, where {playerSymbol} can be specified as either x/X (first player) or o/O (second player) and {difficulty} can be 1 (easy), 2 (intermediate) or 3 (expert)\n" +
+                             "(PUT) /tictactoe - Will perform the next move for the player as specified in the body/payload of the request as the following JSON object {sessionId: {sessionId}, row: {row #}, column: {column #}} (The tic tac toe board is a 3x3 grid, so row and column can be any value 1-3)\n" +
+                             "(DELETE) /tictactoe/{sessionId} - Will delete a tic tac toe session as identified by {sessionId}".Replace("\n", Environment.NewLine);
+
+            return message;
+        }
+
         [HttpPut]
         public async Task<ActionResult<string>> UpdateSessionAsync(UpdateTicTacToeDto updateTicTacToeDto)
         {
@@ -120,6 +135,9 @@ namespace Mini_Services.Api.Controllers
             if(row < 1 || row > 3 || column < 1 || column > 3){
                 error = "Row and column must be in the range 1-3. Your move was canceled.";
             }
+
+            row = row - 1;
+            column = column - 1;
 
             TicTacToe openSession = await repository.GetSessionAsync(Guid.Parse(updateTicTacToeDto.sessionId));
 
@@ -142,12 +160,21 @@ namespace Mini_Services.Api.Controllers
 
             if(updatedSession.board[0][0] == 'P'){
                 await repository.DeleteSessionAsync(updatedSession.Id);
+                updatedSession.board[0][0] = updatedSession.playerSymbol;
                 info = buildGameEndMessage(updatedSession, "Winner, winner, chicken dinner!!! You won!");
             }else if(updatedSession.board[0][0] == 'C'){
                 await repository.DeleteSessionAsync(updatedSession.Id);
+                updatedSession.board[0][0] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
                 info = buildGameEndMessage(updatedSession, "Sorry, you lost. It looks like the AI got the best of you this time...");
-            }else if(updatedSession.board[0][0] == 'D'){
+            }else if(updatedSession.board[0][0] == 'D' || updatedSession.board[0][1] == 'D'){
                 await repository.DeleteSessionAsync(updatedSession.Id);
+                
+                if(updatedSession.board[0][0] == 'D'){
+                    updatedSession.board[0][0] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
+                }else{
+                    updatedSession.board[0][1] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
+                }
+
                 info = buildGameEndMessage(updatedSession, "Its a draw! Whatta game!");
             }else{
                 await repository.UpdateSessionAsync(updatedSession);
@@ -301,7 +328,7 @@ namespace Mini_Services.Api.Controllers
                 currentBoard[0][0] = 'C';
                 return currentBoard;
             }else if(numberOfPositionsFilled == 9){
-                currentBoard[0][0] = 'D';
+                currentBoard[0][1] = 'D';
                 return currentBoard;
             }
 
@@ -317,9 +344,9 @@ namespace Mini_Services.Api.Controllers
             for(int row = 0; row < board.Length; row++){
                 for(int column = 0; column < board.Length; column++){
                     if(board[row][column] == ' '){
-                        char[][] boardCopy = board;
-                        boardCopy[row][column] = symbol;
-                        int score = minimax(boardCopy, row, column, symbol, 0, true);
+                        board[row][column] = symbol;
+                        int score = minimax(board, row, column, symbol, 0, true);
+                        board[row][column] = ' ';
                         if(score > bestScore){
                             bestScore = score;
                             move[0] = row;
@@ -337,7 +364,7 @@ namespace Mini_Services.Api.Controllers
 
             if(result){
                 int boardSize = board.Length * board[0].Length;
-                return (isMaximizing ? boardSize - depth : (boardSize * -1) + depth);
+                return (isMaximizing ? (boardSize * -1) + depth : boardSize - depth);
             }
 
             symbol = (symbol == 'x' || symbol == 'X' ? 'O' : 'X');
@@ -347,9 +374,9 @@ namespace Mini_Services.Api.Controllers
                 for(int row = 0; row < board.Length; row++){
                     for(int column = 0; column < board.Length; column++){
                         if(board[row][column] == ' '){
-                            char[][] boardCopy = board;
-                            boardCopy[row][column] = symbol;
-                            int score = minimax(boardCopy, row, column, symbol, depth + 1, !isMaximizing);
+                            board[row][column] = symbol;
+                            int score = minimax(board, row, column, symbol, depth + 1, !isMaximizing);
+                            board[row][column] = ' ';
                             bestScore = Math.Max(score, bestScore);
                         }
                     }
@@ -360,9 +387,9 @@ namespace Mini_Services.Api.Controllers
                 for(int row = 0; row < board.Length; row++){
                     for(int column = 0; column < board.Length; column++){
                         if(board[row][column] == ' '){
-                            char[][] boardCopy = board;
-                            boardCopy[row][column] = symbol;
-                            int score = minimax(boardCopy, row, column, symbol, depth + 1, !isMaximizing);
+                            board[row][column] = symbol;
+                            int score = minimax(board, row, column, symbol, depth + 1, !isMaximizing);
+                            board[row][column] = ' ';
                             bestScore = Math.Min(score, bestScore);
                         }
                     }

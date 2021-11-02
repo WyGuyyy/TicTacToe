@@ -1,9 +1,8 @@
 using System;
-using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 
-namespace Mini_Services.api.Entities
+namespace Mini_Services.api.Dtos
 {
-    public record Player
+    public class PlayerDto
     {
         public Guid Id {get; init;}
         public string username {get; init;}

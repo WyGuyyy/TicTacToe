@@ -29,16 +29,15 @@ namespace Mini_Services.Api
             
         }
 
-        public static HangmanDto AsHangmanDto(this Hangman hangman)
+        public static PlayerDto AsPlayerDto(this Player player)
         {
-            return new HangmanDto
+            return new PlayerDto
             {
-                sessionId= hangman.sessionId, 
-                word = hangman.word,
-                wordProgress = hangman.wordProgress,
-                guessedLetters = hangman.guessedLetters,
-                wrongGuesses = hangman.wrongGuesses,
-                picture = hangman.picture
+                Id= player.Id, 
+                username = player.username,
+                wins = player.wins,
+                losses = player.losses,
+                score = player.score
             };
             
         }

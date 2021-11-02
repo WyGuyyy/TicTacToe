@@ -49,6 +49,7 @@ namespace Mini_Services.Api
 
             services.AddSingleton<IItemsRepository, MongoDbItemsRepository>();
             services.AddSingleton<ITicTacToeRepository, MongoDbTicTacToeRepository>();
+            services.AddSingleton<IPlayerRepository, MongoDbPlayerRepository>();
 
             services.AddControllers(options => {
                 options.SuppressAsyncSuffixInActionNames = false;
