@@ -36,6 +36,7 @@ namespace Mini_Services.api.Controllers
                 username = playerCreateDto.username,
                 wins = 0,
                 losses = 0,
+                draws = 0,
                 score = 0
             };
 

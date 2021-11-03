@@ -9,6 +9,7 @@ namespace Mini_Services.api.Entities
         public string username {get; init;}
         public int wins {get; init;}
         public int losses {get; init;}
+        public int draws {get; init;}
         public int score {get; init;}
     }
 }

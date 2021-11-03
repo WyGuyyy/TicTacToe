@@ -25,18 +25,20 @@ namespace Mini_Services.Api.Controllers
     public class TicTacToeController : ControllerBase
     {
         private readonly ITicTacToeRepository repository;  
+        private readonly IPlayerRepository playerRepository;
         private readonly ILogger<TicTacToeController> logger;
         private readonly Random rand = new();
 
-        public TicTacToeController(ITicTacToeRepository repository, ILogger<TicTacToeController> logger)
+        public TicTacToeController(ITicTacToeRepository repository, IPlayerRepository playerRepository, ILogger<TicTacToeController> logger)
         {
             this.repository = repository;
+            this.playerRepository = playerRepository;
             this.logger = logger;
         }
 
         // GET /items
-        [HttpPost("{symbol}/{difficulty}")]
-        public async Task<ActionResult<string>> CreateSessionAsync(string symbol, string difficulty)
+        [HttpPost("{symbol}/{difficulty}/{pId}")]
+        public async Task<ActionResult<string>> CreateSessionAsync(string symbol, string difficulty, Guid pId)
         {
             bool isNumeric = Int32.TryParse(difficulty, out int diff);
             string error = "";
@@ -61,7 +63,8 @@ namespace Mini_Services.Api.Controllers
                 Id = Guid.NewGuid(),
                 board = determineInitialBoard(symbol, diff),
                 playerSymbol = Char.Parse(symbol),
-                difficulty = diff
+                difficulty = diff,
+                playerId = pId
             };
 
             await repository.CreateSessionAsync(ticTacToe);
@@ -149,31 +152,59 @@ namespace Mini_Services.Api.Controllers
                 return BadRequest(error);
             }
 
-            TicTacToe updatedSession = new(){
-                Id = openSession.Id,
-                board = playRound(openSession, row, column),
-                playerSymbol = openSession.playerSymbol,
-                difficulty = openSession.difficulty
+            TicTacToe updatedSession = openSession with {
+                board = playRound(openSession, row, column)
             };
 
             string info = "";
 
-            if(updatedSession.board[0][0] == 'P'){
+            if(updatedSession.board[0][0] == 'P' || updatedSession.board[0][0] == 'p'){
                 await repository.DeleteSessionAsync(updatedSession.Id);
-                updatedSession.board[0][0] = updatedSession.playerSymbol;
+                updatedSession.board[0][0] = (updatedSession.board[0][0] == 'P' ? 'X' : 'O');
+
+                Player player = await playerRepository.GetAccountAsync(updatedSession.playerId);
+
+                player = player with {
+                    wins = player.wins + 1,
+                    score = (((player.wins * 3) - (player.losses * 2)) + (player.draws/2))
+                };
+
+                await playerRepository.UpdatePlayerAsync(player);
+
                 info = buildGameEndMessage(updatedSession, "Winner, winner, chicken dinner!!! You won!");
-            }else if(updatedSession.board[0][0] == 'C'){
+            }else if(updatedSession.board[0][0] == 'C' || updatedSession.board[0][0] == 'c'){
                 await repository.DeleteSessionAsync(updatedSession.Id);
-                updatedSession.board[0][0] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
+                updatedSession.board[0][0] = (updatedSession.board[0][0] == 'C' ? 'X' : 'O');
+
+                Player player = await playerRepository.GetAccountAsync(updatedSession.playerId);
+
+                player = player with {
+                    losses = player.losses + 1,
+                    score = (((player.wins * 3) - (player.losses * 2)) + (player.draws/2))
+                };
+                
+                await playerRepository.UpdatePlayerAsync(player);
+
                 info = buildGameEndMessage(updatedSession, "Sorry, you lost. It looks like the AI got the best of you this time...");
-            }else if(updatedSession.board[0][0] == 'D' || updatedSession.board[0][1] == 'D'){
+            }else if(updatedSession.board[0][0] == 'D' || updatedSession.board[0][1] == 'd'){
                 await repository.DeleteSessionAsync(updatedSession.Id);
                 
-                if(updatedSession.board[0][0] == 'D'){
+                updatedSession.board[0][0] = (updatedSession.board[0][0] == 'D' ? 'X' : 'O');
+
+                /*if(updatedSession.board[0][0] == 'D'){
                     updatedSession.board[0][0] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
                 }else{
                     updatedSession.board[0][1] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
-                }
+                }*/
+
+                Player player = await playerRepository.GetAccountAsync(updatedSession.playerId);
+
+                player = player with {
+                    draws = player.draws + 1,
+                    score = (((player.wins * 3) - (player.losses * 2)) + (player.draws/2))
+                };
+                
+                await playerRepository.UpdatePlayerAsync(player);
 
                 info = buildGameEndMessage(updatedSession, "Its a draw! Whatta game!");
             }else{
@@ -313,10 +344,10 @@ namespace Mini_Services.Api.Controllers
             numberOfPositionsFilled++;
 
             if(checkWinner(currentBoard, row, column, playerSymbol)){
-                currentBoard[0][0] = 'P';
+                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'P' : 'p');
                 return currentBoard;
             }else if(numberOfPositionsFilled == 9){
-                currentBoard[0][0] = 'D';
+                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'D' : 'd');
                 return currentBoard;
             }
 
@@ -325,10 +356,10 @@ namespace Mini_Services.Api.Controllers
             currentBoard[cpuMoves[0]][cpuMoves[1]] = computerSymbol;
 
             if(checkWinner(currentBoard, cpuMoves[0], cpuMoves[1], computerSymbol)){
-                currentBoard[0][0] = 'C';
+                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'C' : 'c');
                 return currentBoard;
             }else if(numberOfPositionsFilled == 9){
-                currentBoard[0][1] = 'D';
+                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'D' : 'd');
                 return currentBoard;
             }
 
@@ -364,7 +395,7 @@ namespace Mini_Services.Api.Controllers
 
             if(result){
                 int boardSize = board.Length * board[0].Length;
-                return (isMaximizing ? (boardSize * -1) + depth : boardSize - depth);
+                return (isMaximizing ? boardSize - (depth - 1) : (boardSize * -1) + (depth - 1));
             }
 
             symbol = (symbol == 'x' || symbol == 'X' ? 'O' : 'X');

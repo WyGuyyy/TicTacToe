@@ -17,6 +17,7 @@ namespace Mini_Services.UnitTest
     public class TicTacToeControllerTests
     {
          private readonly Mock<ITicTacToeRepository> repositoryStub = new();
+         private readonly Mock<IPlayerRepository> playerRepositoryStub = new();
          private readonly Mock<ILogger<TicTacToeController>> loggerStub = new();
 
          [Fact]
@@ -28,12 +29,12 @@ namespace Mini_Services.UnitTest
             //Arrange
             repositoryStub.Setup(repo => repo.CreateSessionAsync(ticTacToe));
 
-            var controller = new TicTacToeController(repositoryStub.Object, loggerStub.Object);
+            var controller = new TicTacToeController(repositoryStub.Object, playerRepositoryStub.Object, loggerStub.Object);
 
             //Act
-            var result1 = await controller.CreateSessionAsync("z", "1");
-            var result2 = await controller.CreateSessionAsync("x", "0");
-            var result3 = await controller.CreateSessionAsync("v", "4");
+            var result1 = await controller.CreateSessionAsync("z", "1", Guid.NewGuid());
+            var result2 = await controller.CreateSessionAsync("x", "0", Guid.NewGuid());
+            var result3 = await controller.CreateSessionAsync("v", "4", Guid.NewGuid());
 
             //Assert
             result1.Result.Should().BeOfType<BadRequestObjectResult>();
@@ -51,10 +52,10 @@ namespace Mini_Services.UnitTest
             //Arrange
             repositoryStub.Setup(repo => repo.CreateSessionAsync(ticTacToe));
 
-            var controller = new TicTacToeController(repositoryStub.Object, loggerStub.Object);
+            var controller = new TicTacToeController(repositoryStub.Object, playerRepositoryStub.Object, loggerStub.Object);
 
             //Act
-            var result1 = await controller.CreateSessionAsync("x", "1");
+            var result1 = await controller.CreateSessionAsync("x", "1", Guid.NewGuid());
             //var result2 = await controller.CreateSessionAsync("o", "3");
             //var result3 = await controller.CreateSessionAsync("x", "2");
 

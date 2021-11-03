@@ -8,5 +8,6 @@ namespace Mini_Services.api.Entities
         public char[][] board {get; init;}
         public char playerSymbol {get; init;}
         public int difficulty {get; set;}
+        public Guid playerId {get; init;}
     }
 }
