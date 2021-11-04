@@ -29,6 +29,12 @@ namespace Mini_Services.Api.Controllers
         private readonly ILogger<TicTacToeController> logger;
         private readonly Random rand = new();
 
+        Dictionary<char, int> lookupTable = new Dictionary<char, int>()
+        {
+            {'X', 1},
+            {'O', -1}
+        };
+
         public TicTacToeController(ITicTacToeRepository repository, IPlayerRepository playerRepository, ILogger<TicTacToeController> logger)
         {
             this.repository = repository;
@@ -62,7 +68,7 @@ namespace Mini_Services.Api.Controllers
             TicTacToe ticTacToe = new(){
                 Id = Guid.NewGuid(),
                 board = determineInitialBoard(symbol, diff),
-                playerSymbol = Char.Parse(symbol),
+                playerSymbol = Char.Parse(symbol.ToUpper()),
                 difficulty = diff,
                 playerId = pId
             };
@@ -152,15 +158,18 @@ namespace Mini_Services.Api.Controllers
                 return BadRequest(error);
             }
 
+            var results = playRound(openSession, row, column);
+
             TicTacToe updatedSession = openSession with {
-                board = playRound(openSession, row, column)
+                board = results.board
             };
 
             string info = "";
+            char playerSymbol = updatedSession.playerSymbol;
+            char computerSymbol = playerSymbol == 'X' ? 'O' : 'X';
 
-            if(updatedSession.board[0][0] == 'P' || updatedSession.board[0][0] == 'p'){
+            if(results.winner == lookupTable[playerSymbol]){
                 await repository.DeleteSessionAsync(updatedSession.Id);
-                updatedSession.board[0][0] = (updatedSession.board[0][0] == 'P' ? 'X' : 'O');
 
                 Player player = await playerRepository.GetAccountAsync(updatedSession.playerId);
 
@@ -172,9 +181,8 @@ namespace Mini_Services.Api.Controllers
                 await playerRepository.UpdatePlayerAsync(player);
 
                 info = buildGameEndMessage(updatedSession, "Winner, winner, chicken dinner!!! You won!");
-            }else if(updatedSession.board[0][0] == 'C' || updatedSession.board[0][0] == 'c'){
+            }else if(results.winner == lookupTable[computerSymbol]){
                 await repository.DeleteSessionAsync(updatedSession.Id);
-                updatedSession.board[0][0] = (updatedSession.board[0][0] == 'C' ? 'X' : 'O');
 
                 Player player = await playerRepository.GetAccountAsync(updatedSession.playerId);
 
@@ -186,16 +194,8 @@ namespace Mini_Services.Api.Controllers
                 await playerRepository.UpdatePlayerAsync(player);
 
                 info = buildGameEndMessage(updatedSession, "Sorry, you lost. It looks like the AI got the best of you this time...");
-            }else if(updatedSession.board[0][0] == 'D' || updatedSession.board[0][1] == 'd'){
+            }else if(results.winner == 0){
                 await repository.DeleteSessionAsync(updatedSession.Id);
-                
-                updatedSession.board[0][0] = (updatedSession.board[0][0] == 'D' ? 'X' : 'O');
-
-                /*if(updatedSession.board[0][0] == 'D'){
-                    updatedSession.board[0][0] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
-                }else{
-                    updatedSession.board[0][1] = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? 'O' : 'X');
-                }*/
 
                 Player player = await playerRepository.GetAccountAsync(updatedSession.playerId);
 
@@ -217,8 +217,8 @@ namespace Mini_Services.Api.Controllers
 
         public string buildGameEndMessage(TicTacToe updatedSession, string resultMessage){
 
-            string strPlayerSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
-            string strCPUSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
+            string strPlayerSymbol = (updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
+            string strCPUSymbol = (updatedSession.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
             string strDifficulty = (updatedSession.difficulty == 1 ? "1 (Easy)" : (updatedSession.difficulty == 2 ? "2 (Intermediate)" : "3 (Expert)"));
             string sessionId = updatedSession.Id.ToString();
             char[][] currentBoard = updatedSession.board;
@@ -247,8 +247,8 @@ namespace Mini_Services.Api.Controllers
 
         public string buildSessionOpenMessage(TicTacToe ticTacToe){
             
-            string strPlayerSymbol = (ticTacToe.playerSymbol == 'x' || ticTacToe.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
-            string strCPUSymbol = (ticTacToe.playerSymbol == 'x' || ticTacToe.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
+            string strPlayerSymbol = (ticTacToe.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
+            string strCPUSymbol = (ticTacToe.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
             string strDifficulty = (ticTacToe.difficulty == 1 ? "1 (Easy)" : (ticTacToe.difficulty == 2 ? "2 (Intermediate)" : "3 (Expert)"));
             string sessionId = ticTacToe.Id.ToString();
             char[][] currentBoard = ticTacToe.board;
@@ -278,8 +278,8 @@ namespace Mini_Services.Api.Controllers
 
         public string buildSessionRoundMessage(TicTacToe updatedSession){
 
-            string strPlayerSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
-            string strCPUSymbol = (updatedSession.playerSymbol == 'x' || updatedSession.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
+            string strPlayerSymbol = (updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
+            string strCPUSymbol = (updatedSession.playerSymbol == 'X' ? "O (Second Turn)" : "X (First Turn)");
             string strDifficulty = (updatedSession.difficulty == 1 ? "1 (Easy)" : (updatedSession.difficulty == 2 ? "2 (Intermediate)" : "3 (Expert)"));
             string sessionId = updatedSession.Id.ToString();
             char[][] currentBoard = updatedSession.board;
@@ -310,19 +310,21 @@ namespace Mini_Services.Api.Controllers
 
             char[][] board = new char[][] {new char[] {' ', ' ', ' '}, new char[] {' ', ' ', ' ',}, new char[] {' ', ' ', ' '}};
 
-            if(symbol.Equals("x", StringComparison.OrdinalIgnoreCase)){
+            if(symbol.Equals("X")){
                 return board;
             }
 
             if(diff == 1){
                 int[][] moves = {new int[] {0, 1}, new int[] {1, 0}, new int[] {1, 2}, new int[] {2, 1}};
-                int[] moveSet = moves[rand.Next(5)];
+                int[] moveSet = moves[rand.Next(4)];
                 board[moveSet[0]][moveSet[1]] = 'X';
             }else if(diff == 2){
-                board[1][1] = 'X';
-            }else{
-                int[][] moves = {new int[] {0, 0}, new int[] {0, 2}, new int[] {2, 0}, new int[] {2, 2}};
+                int[][] moves = {new int[] {0, 1}, new int[] {2, 1}, new int[] {1, 1}, new int[] {0, 0}, new int[] {2, 2}};
                 int[] moveSet = moves[rand.Next(5)];
+                board[moveSet[0]][moveSet[1]] = 'X';
+            }else{
+                int[][] moves = {new int[] {0, 0}, new int[] {2, 0}, new int[] {0, 2}, new int[] {2, 2}};
+                int[] moveSet = moves[rand.Next(4)];
                 board[moveSet[0]][moveSet[1]] = 'X';
             }
 
@@ -330,12 +332,14 @@ namespace Mini_Services.Api.Controllers
 
         }
 
-        public char[][] playRound(TicTacToe openSession, int row, int column){
-            
+        public (char[][] board, int winner) playRound(TicTacToe openSession, int row, int column){
+
             char playerSymbol = openSession.playerSymbol;
-            char computerSymbol = (playerSymbol == 'x' || playerSymbol == 'X' ? 'O' : 'X');
+            char computerSymbol = (playerSymbol == 'X' ? 'O' : 'X');
             int difficulty = openSession.difficulty;
+
             char[][] currentBoard = openSession.board;
+            int winner = 2;
 
             int numberOfPositionsFilled = countPositionsFilled(currentBoard);
 
@@ -343,45 +347,58 @@ namespace Mini_Services.Api.Controllers
             currentBoard[row][column] = playerSymbol;
             numberOfPositionsFilled++;
 
-            if(checkWinner(currentBoard, row, column, playerSymbol)){
-                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'P' : 'p');
-                return currentBoard;
+            if(checkWinner(currentBoard) == lookupTable[playerSymbol]){
+                winner = lookupTable[playerSymbol];
+                return (currentBoard, winner);
             }else if(numberOfPositionsFilled == 9){
-                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'D' : 'd');
-                return currentBoard;
+                winner = 0;
+                return (currentBoard, winner);
             }
 
             //Computers turn
             int[] cpuMoves = decideCPUMove(currentBoard, difficulty, computerSymbol);
             currentBoard[cpuMoves[0]][cpuMoves[1]] = computerSymbol;
+            numberOfPositionsFilled++;
 
-            if(checkWinner(currentBoard, cpuMoves[0], cpuMoves[1], computerSymbol)){
-                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'C' : 'c');
-                return currentBoard;
+            if(checkWinner(currentBoard) == lookupTable[computerSymbol]){
+                winner = lookupTable[computerSymbol];
+                return (currentBoard, winner);
             }else if(numberOfPositionsFilled == 9){
-                currentBoard[0][0] = (currentBoard[0][0] == 'X' ? 'D' : 'd');
-                return currentBoard;
+                winner = 0;
+                return (currentBoard, winner);
             }
 
-            return currentBoard;
+            return (currentBoard, winner);
 
         }
 
         //Brain of the computer player (CPU)
         public int[] decideCPUMove(char[][] board, int difficulty, char symbol){
             int[] move = new int[] {0, 0};
-            int bestScore = int.MinValue;
+            int bestScore = (symbol == 'X' ? int.MinValue : int.MaxValue);
+            bool isMaximizer = (symbol == 'X' ? false : true);
+
+            int maxDepth = Math.Max(1, (9 - countPositionsFilled(board)) / (difficulty == 1 ? 3 : (difficulty == 2 ? 2 : 1)) - (difficulty == 3 ? 1 : 0));
 
             for(int row = 0; row < board.Length; row++){
                 for(int column = 0; column < board.Length; column++){
                     if(board[row][column] == ' '){
                         board[row][column] = symbol;
-                        int score = minimax(board, row, column, symbol, 0, true);
+                        int score = minimax(board, row, column, symbol, 0, isMaximizer, maxDepth);
                         board[row][column] = ' ';
-                        if(score > bestScore){
-                            bestScore = score;
-                            move[0] = row;
-                            move[1] = column;
+
+                        if(symbol == 'X'){
+                            if(score > bestScore){
+                                bestScore = score;
+                                move[0] = row;
+                                move[1] = column;
+                            }
+                        }else{
+                            if(score < bestScore){
+                                bestScore = score;
+                                move[0] = row;
+                                move[1] = column;
+                            }
                         }
                     }
                 }
@@ -390,15 +407,17 @@ namespace Mini_Services.Api.Controllers
             return move;
         }
 
-        public int minimax(char[][] board, int currRow, int currColumn, char symbol, int depth, bool isMaximizing){
-            bool result = this.checkWinner(board, currRow, currColumn, symbol);
-
-            if(result){
-                int boardSize = board.Length * board[0].Length;
-                return (isMaximizing ? boardSize - (depth - 1) : (boardSize * -1) + (depth - 1));
+        public int minimax(char[][] board, int currRow, int currColumn, char symbol, int depth, bool isMaximizing, int maxDepth){
+            int result = this.checkWinner(board);
+            
+            if(result != 2){
+                return lookupTable[symbol] == 1 ? maxDepth - (depth - 1) : (maxDepth * -1) + (depth - 1);
+                //return boardSize - (depth - 1) : (boardSize * -1) + (depth - 1));
+            }else if(depth >= maxDepth){
+                return lookupTable[symbol] == 1 ? maxDepth - (depth - 1) : (maxDepth * -1) + (depth - 1);
             }
 
-            symbol = (symbol == 'x' || symbol == 'X' ? 'O' : 'X');
+            symbol = (symbol == 'X' ? 'O' : 'X');
 
             if(isMaximizing){
                 int bestScore = int.MinValue;
@@ -406,7 +425,7 @@ namespace Mini_Services.Api.Controllers
                     for(int column = 0; column < board.Length; column++){
                         if(board[row][column] == ' '){
                             board[row][column] = symbol;
-                            int score = minimax(board, row, column, symbol, depth + 1, !isMaximizing);
+                            int score = minimax(board, row, column, symbol, depth + 1, !isMaximizing, maxDepth);
                             board[row][column] = ' ';
                             bestScore = Math.Max(score, bestScore);
                         }
@@ -419,7 +438,7 @@ namespace Mini_Services.Api.Controllers
                     for(int column = 0; column < board.Length; column++){
                         if(board[row][column] == ' '){
                             board[row][column] = symbol;
-                            int score = minimax(board, row, column, symbol, depth + 1, !isMaximizing);
+                            int score = minimax(board, row, column, symbol, depth + 1, !isMaximizing, maxDepth);
                             board[row][column] = ' ';
                             bestScore = Math.Min(score, bestScore);
                         }
@@ -430,36 +449,57 @@ namespace Mini_Services.Api.Controllers
 
         }
 
-        public bool checkWinner(char[][] board, int row, int column, char symbol){
+        public int checkWinner(char[][] board){ //, int row, int column, char symbol){
 
             for(int count = 0; count < 3; count++){
-                if(board[row][count] != symbol){
+                //Check rows
+                if(threeInARow(board[count][0], board[count][1], board[count][2])){
+                    return (board[count][0] == 'X' ? 1 : -1);
+                }
+
+                //Check columns
+                if(threeInARow(board[0][count], board[1][count], board[2][count])){
+                    return (board[0][count] == 'X' ? 1 : -1);
+                }
+            }
+
+            if(threeInARow(board[0][0], board[1][1], board[2][2])){
+                return (board[0][0] == 'X' ? 1 : -1);
+            }
+
+            if(threeInARow(board[2][0], board[1][1], board[0][2])){
+                return (board[2][0] == 'X' ? 1 : -1);
+            }
+
+            int emptySpaces = 0;
+
+            for(int row = 0; row < 3; row++){
+                for(int column = 0; column < 3; column++){
+                    if(board[row][column] == ' '){
+                        emptySpaces++;
+                    }
+                }
+            }
+
+            return (emptySpaces > 0 ? 2 : 0);
+
+            /*for(int column = 0; column < 3; column++){
+                if(threeInARow(board[row][0], board[row][1], board[row][2])){
+                    return (board[row][0] == 'x' || board[row][0] == 'X' ? 1 : -1);
+                }
+            }*/
+
+
+
+            /*for(int count = 0; count < 3; count++){
+                if(board[count][count] != symbol){
                     break;
                 }
                 if(count == 2){
                     return true;
                 }
             }
-
-            for(int count = 0; count < 3; count++){
-                if(board[count][column] != symbol){
-                    break;
-                }
-                if(count == 2){
-                    return true;
-                }
-            }
-
-            if(row == column){
-                for(int count = 0; count < 3; count++){
-                    if(board[count][count] != symbol){
-                        break;
-                    }
-                    if(count == 2){
-                        return true;
-                    }
-                }
-            }
+        }
 
             if(row + column == 2){
                 for(int count = 0; count < 3; count++){
@@ -472,7 +512,12 @@ namespace Mini_Services.Api.Controllers
                 }
             }
 
-            return false;
+            return false;*/
+        }
+
+        public bool threeInARow(char a, char b, char c)
+        {
+            return a == b && b == c && a != ' ';
         }
 
         public int countPositionsFilled(char[][] board){
