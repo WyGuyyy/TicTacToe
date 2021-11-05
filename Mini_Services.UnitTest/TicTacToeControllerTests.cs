@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Mini_Services.api.Dtos;
 using Mini_Services.api.Entities;
 using Mini_Services.api.Repositories;
-using Mini_Services.Api.Dtos;
 using Moq;
 using Xunit;
 using System.Runtime.CompilerServices;

@@ -1,7 +1,5 @@
 using Mini_Services.api.Dtos;
 using Mini_Services.api.Entities;
-using Mini_Services.Api.Dtos;
-using Mini_Services.Api.Entities;
 
 namespace Mini_Services.Api
 {

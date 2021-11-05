@@ -1,21 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using Mini_Services.Api.Repositories;
 using System.Collections.Generic;
-using Mini_Services.Api.Entities;
 using System;
-using System.Linq;
-using Mini_Services.Api.Dtos;
-using Microsoft.AspNetCore.DataProtection;
-using System.Data.Common;
 using System.Threading.Tasks;
-using DnsClient.Internal;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Mini_Services.api.Repositories;
 using Mini_Services.api.Dtos;
 using Mini_Services.api.Entities;
-using System.Runtime.CompilerServices;
-using System.Collections;
 
 namespace Mini_Services.Api.Controllers
 {
@@ -66,10 +56,12 @@ namespace Mini_Services.Api.Controllers
                 return BadRequest(error);
             }
 
+            symbol = symbol.ToUpper();
+
             TicTacToe ticTacToe = new(){
                 Id = Guid.NewGuid(),
                 board = determineInitialBoard(symbol, diff),
-                playerSymbol = Char.Parse(symbol.ToUpper()),
+                playerSymbol = Char.Parse(symbol),
                 difficulty = diff,
                 playerId = pId
             };
