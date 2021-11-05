@@ -51,7 +51,7 @@ namespace Mini_Services.api.Controllers
             var player = await repository.GetAccountAsync(Id);
 
             if(player is null){
-                return NotFound();
+                return NotFound("Sorry, the player you are looking for does not exist in the system.");
             }
 
             return player.AsPlayerDto();
@@ -66,12 +66,12 @@ namespace Mini_Services.api.Controllers
         }
 
         [HttpPut("{Id}")]
-        public async Task<ActionResult> UpdateAccountsAsync(Guid Id, PlayerUpdateDto playerUpdateDto)
+        public async Task<string> UpdateAccountsAsync(Guid Id, PlayerUpdateDto playerUpdateDto)
         {
             var existingPlayer = await repository.GetAccountAsync(Id);
 
             if(existingPlayer is null){
-                return NotFound();
+                return "Sorry, the player you are trying to update does not exist in the system";
             }
 
             Player updatedPlayer = existingPlayer with {
@@ -80,21 +80,21 @@ namespace Mini_Services.api.Controllers
 
             await repository.UpdatePlayerAsync(updatedPlayer);
 
-            return NoContent();
+            return "Update successful!";
         }
 
         [HttpDelete("{Id}")]
-        public async Task<ActionResult> DeletePlayerAsync(Guid Id)
+        public async Task<string> DeletePlayerAsync(Guid Id)
         {
             var existingPlayer = await repository.GetAccountAsync(Id);
 
             if(existingPlayer is null){
-                return NotFound();
+                return "Sorry, the player you specified for deletion is not in the system.";
             }
 
             await repository.DeletePlayerAsync(Id);
 
-            return NoContent();
+            return "Deletion successful!";
         }
 
         [HttpGet]

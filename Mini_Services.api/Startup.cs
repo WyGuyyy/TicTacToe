@@ -47,7 +47,6 @@ namespace Mini_Services.Api
                 return new MongoClient(mongoDbSettings.ConnectionString);
             });
 
-            services.AddSingleton<IItemsRepository, MongoDbItemsRepository>();
             services.AddSingleton<ITicTacToeRepository, MongoDbTicTacToeRepository>();
             services.AddSingleton<IPlayerRepository, MongoDbPlayerRepository>();
 

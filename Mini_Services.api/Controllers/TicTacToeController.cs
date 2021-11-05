@@ -28,7 +28,8 @@ namespace Mini_Services.Api.Controllers
         private readonly IPlayerRepository playerRepository;
         private readonly ILogger<TicTacToeController> logger;
         private readonly Random rand = new();
-
+        
+        //Lookup table for maximizer and minimizer
         Dictionary<char, int> lookupTable = new Dictionary<char, int>()
         {
             {'X', 1},
@@ -42,7 +43,7 @@ namespace Mini_Services.Api.Controllers
             this.logger = logger;
         }
 
-        // GET /items
+        
         [HttpPost("{symbol}/{difficulty}/{pId}")]
         public async Task<ActionResult<string>> CreateSessionAsync(string symbol, string difficulty, Guid pId)
         {
@@ -95,7 +96,7 @@ namespace Mini_Services.Api.Controllers
             var session = await repository.GetSessionAsync(sessionId);
 
             if(session is null){
-                return NotFound();
+                return NotFound("Sorry, the game session you specified does not exist in the system or was ended.");
             }
 
             return session;
@@ -103,16 +104,16 @@ namespace Mini_Services.Api.Controllers
         }
 
         [HttpDelete("{sessionId}")]
-        public async Task<ActionResult> DeleteSessionAsync(Guid sessionId){
+        public async Task<string> DeleteSessionAsync(Guid sessionId){
             var existingSession = await repository.GetSessionAsync(sessionId);
 
             if(existingSession is null){
-                return NotFound();
+                return "Sorry, the game session you specified for deletion does not exist in the system or was ended.";
             }
 
             await repository.DeleteSessionAsync(sessionId);
 
-            return NoContent();
+            return "Deletion successful!";
         }
 
         [HttpGet]
@@ -149,6 +150,10 @@ namespace Mini_Services.Api.Controllers
             column = column - 1;
 
             TicTacToe openSession = await repository.GetSessionAsync(Guid.Parse(updateTicTacToeDto.sessionId));
+
+            if(openSession is null){
+                return "Sorry, the game you specified to play does not exist in the system.";
+            }
 
             if(!(openSession.board[row][column] == ' ')){
                 error = "The position you selected has already been filled. Your move was canceled. Please choose an empty position.";
@@ -215,6 +220,7 @@ namespace Mini_Services.Api.Controllers
             return info;
         }
 
+        //Build the game end message when there has been a winner or a draw, showing the end game board configuration
         public string buildGameEndMessage(TicTacToe updatedSession, string resultMessage){
 
             string strPlayerSymbol = (updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
@@ -245,6 +251,7 @@ namespace Mini_Services.Api.Controllers
 
         }
 
+        //Build the game start message when a session has been created, showing the initial board configuration
         public string buildSessionOpenMessage(TicTacToe ticTacToe){
             
             string strPlayerSymbol = (ticTacToe.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
@@ -276,6 +283,7 @@ namespace Mini_Services.Api.Controllers
 
         }
 
+        //Build a message after a round has been completed showing the current board configuration
         public string buildSessionRoundMessage(TicTacToe updatedSession){
 
             string strPlayerSymbol = (updatedSession.playerSymbol == 'X' ? "X (First Turn)" : "O (Second Turn)");
@@ -306,14 +314,25 @@ namespace Mini_Services.Api.Controllers
 
         }
 
+        //Determine the initial board returned to the player upon a game session being created
+        //If the player chose to be X, a blank board is returned. If the player chose to be O,
+        //the computer will make a move (move will differ depending on the difficulty selected)
         public char[][] determineInitialBoard(string symbol, int diff){
 
             char[][] board = new char[][] {new char[] {' ', ' ', ' '}, new char[] {' ', ' ', ' ',}, new char[] {' ', ' ', ' '}};
 
+            //If player chose X, just return empty board
             if(symbol.Equals("X")){
                 return board;
             }
 
+            //CPU move will differ depending upon the difficulty selected
+            //(Technically here, we could just call the brain of the CPU "decideCPUMove()" function.
+            //however since the CPU using the minimax algorithm on difficulty 3 almost always chose the first position
+            //that was the optimal move - in this case, position [0,0] - I decided to make the initial move just
+            //a randomization of the most optimal first move(s) in Tic Tac Toe, which is ANY of the corners: [0,0], [2,0], [0,2], [2,2].
+            //And likewise for difficullty 1 (easy), and 2 (intermediate) I chose the statistically worst move(s) and a mix of optimal and none
+            //optimal moves, respectively.)
             if(diff == 1){
                 int[][] moves = {new int[] {0, 1}, new int[] {1, 0}, new int[] {1, 2}, new int[] {2, 1}};
                 int[] moveSet = moves[rand.Next(4)];
@@ -332,6 +351,7 @@ namespace Mini_Services.Api.Controllers
 
         }
 
+        //Play one round of a tic tac toe game, respective to which symbol the player has chosen
         public (char[][] board, int winner) playRound(TicTacToe openSession, int row, int column){
 
             char playerSymbol = openSession.playerSymbol;
@@ -347,6 +367,7 @@ namespace Mini_Services.Api.Controllers
             currentBoard[row][column] = playerSymbol;
             numberOfPositionsFilled++;
 
+            //check if player wins or if board is filled
             if(checkWinner(currentBoard) == lookupTable[playerSymbol]){
                 winner = lookupTable[playerSymbol];
                 return (currentBoard, winner);
@@ -360,6 +381,7 @@ namespace Mini_Services.Api.Controllers
             currentBoard[cpuMoves[0]][cpuMoves[1]] = computerSymbol;
             numberOfPositionsFilled++;
 
+            //check if computer wins or if board is filled
             if(checkWinner(currentBoard) == lookupTable[computerSymbol]){
                 winner = lookupTable[computerSymbol];
                 return (currentBoard, winner);
@@ -373,13 +395,23 @@ namespace Mini_Services.Api.Controllers
         }
 
         //Brain of the computer player (CPU)
+        //decideCPUMove handles the logic for deciding the next move of the CPU player,
+        //which is totally dependent upon the difficulty selected. The difficulty selected
+        //(specified by the difficulty parameter) is what determines how many levels deep the minimax
+        //algorithm can traverse the tree of possible moves recursively (see the initialization of maxDepth for the equation).
+        //The higer the difficulty, the deeper the minimax algorithm and can recursively traverse the tree of possible moves 
+        //and outcomes, meaning the more likely the algorithm is to find the optimal sequence of moves needed to win the game,
+        //(or at worst, draw).
         public int[] decideCPUMove(char[][] board, int difficulty, char symbol){
             int[] move = new int[] {0, 0};
             int bestScore = (symbol == 'X' ? int.MinValue : int.MaxValue);
             bool isMaximizer = (symbol == 'X' ? false : true);
 
+            //determine the max depth based on difficulty
             int maxDepth = Math.Max(1, (9 - countPositionsFilled(board)) / (difficulty == 1 ? 3 : (difficulty == 2 ? 2 : 1)) - (difficulty == 3 ? 1 : 0));
 
+            //This nest loop is techincally the current move of the CPU player for the current board configuration
+            //The first call to minimax is made within
             for(int row = 0; row < board.Length; row++){
                 for(int column = 0; column < board.Length; column++){
                     if(board[row][column] == ' '){
@@ -407,7 +439,12 @@ namespace Mini_Services.Api.Controllers
             return move;
         }
 
+        //minimax is the algorithm that recursively traverses the entire tree of possible moves that can be made by the CPU, and
+        //attempts to return the most optimal next move on the tic tac toe board
         public int minimax(char[][] board, int currRow, int currColumn, char symbol, int depth, bool isMaximizing, int maxDepth){
+            
+            //First, need to check if there is a winner with the current board configuration
+            //If there is a winner, determine if it is the maximizer (X) or minimizer (O)
             int result = this.checkWinner(board);
             
             if(result != 2){
@@ -419,6 +456,8 @@ namespace Mini_Services.Api.Controllers
 
             symbol = (symbol == 'X' ? 'O' : 'X');
 
+            //If it is currently the maximizers move, find the maximum score out of the current available
+            //moves. The highest score will determine the optimal move the maximizer (X) should make
             if(isMaximizing){
                 int bestScore = int.MinValue;
                 for(int row = 0; row < board.Length; row++){
@@ -432,6 +471,8 @@ namespace Mini_Services.Api.Controllers
                     }
                 }
                 return bestScore;
+            //If it is currently the minimizers move, find the minimum score out of the current available
+            //moves. The lowest score will determine the optimal move the minimizer (O) should make
             }else{
                 int bestScore = int.MaxValue;
                 for(int row = 0; row < board.Length; row++){
@@ -449,6 +490,9 @@ namespace Mini_Services.Api.Controllers
 
         }
 
+        //Checks to see if the current board configuration contains a winner
+        //If so, return 1 if maximizer won, or return -1 if minimizer won.
+        //If the board if full and there is no winner, return 0 to declare a draw
         public int checkWinner(char[][] board){ //, int row, int column, char symbol){
 
             for(int count = 0; count < 3; count++){
@@ -515,11 +559,13 @@ namespace Mini_Services.Api.Controllers
             return false;*/
         }
 
+        //Check if the passed in tic tac toe board positions contain the same X or O character
         public bool threeInARow(char a, char b, char c)
         {
             return a == b && b == c && a != ' ';
         }
 
+        //Get the number of currently filled positions on the tic tac toe board
         public int countPositionsFilled(char[][] board){
 
             int fillCount = 0;
